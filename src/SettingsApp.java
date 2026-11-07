@@ -1,4 +1,4 @@
-import javax.microedition.lcdui.*;
+qimport javax.microedition.lcdui.*;
 
 final class SettingsApp extends App {
     static final String[] ROWS = {"Theme", "Accent color", "Wallpaper", "Icon pack", "Home layout", "Music", "Sound effects", "Volume", "Reset high scores", "About"};
@@ -86,4 +86,4 @@ final class SettingsApp extends App {
         h.drawHeader(g, "Settings", null);
         h.drawBar(g, "Change", "< > values", "Back");
     }
-}a
+}
