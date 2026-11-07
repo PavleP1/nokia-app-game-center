@@ -477,9 +477,121 @@ final class Hub extends Canvas implements Runnable {
                 g.fillRect(cx, cy - 3 * u, t, 4 * u);
                 g.fillRect(cx, cy + u, 3 * u, t);
                 break;
-            case 9:
+                        case 9:
                 g.fillRoundRect(cx - 6 * u, cy - 6 * u, 12 * u, 12 * u, 2 * u, 2 * u);
                 g.setColor(bg);
                 g.drawLine(cx - 3 * u, cy, cx - u, cy + 3 * u);
                 g.drawLine(cx - 3 * u, cy + 1, cx - u, cy + 3 * u + 1);
+                g.drawLine(cx - u, cy + 3 * u, cx + 4 * u, cy - 3 * u);
+                g.drawLine(cx - u, cy + 3 * u + 1, cx + 4 * u, cy - 3 * u + 1);
+                break;
+            default: {
+                int[] kx = {-4 * u, 2 * u, -u};
+                for (int k = 0; k < 3; k++) {
+                    int yy = cy - 4 * u + k * 4 * u;
+                    g.fillRect(cx - 6 * u, yy, 12 * u, t);
+                    g.fillArc(cx + kx[k], yy - u, 3 * u, 3 * u, 0, 360);
+                }
+            }
+        }
+    }
+
+    // ---------- input
+    protected void keyPressed(int k) {
+        if (trans) return;
+        if (ringing) { dismiss(isLeft(k)); repaint(); return; }
+        cur.key(k, this);
+        repaint();
+    }
+
+    protected void keyRepeated(int k) {
+        if (trans || ringing) return;
+        int a = act(k);
+        if (cur.repeat() && (a == UP || a == DOWN || a == LEFT || a == RIGHT || isClear(k))) {
+            cur.key(k, this);
+            repaint();
+        }
+    }
+
+    // ---------- alarm service (rings in any app)
+    void loadAlarm() {
+        byte[] d = Cfg.read("malarm");
+        if (d == null) return;
+        try {
+            java.io.DataInputStream in = new java.io.DataInputStream(new java.io.ByteArrayInputStream(d));
+            alH = in.readInt(); alM = in.readInt();
+            alOn = in.readBoolean(); alDaily = in.readBoolean();
+            alTime = in.readLong();
+        } catch (Exception e) {}
+    }
+
+    void saveAlarm() {
+        try {
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            java.io.DataOutputStream o = new java.io.DataOutputStream(bo);
+            o.writeInt(alH); o.writeInt(alM);
+            o.writeBoolean(alOn); o.writeBoolean(alDaily);
+            o.writeLong(alTime);
+            o.flush();
+            Cfg.write("malarm", bo.toByteArray());
+        } catch (Exception e) {}
+    }
+
+    void armAlarm(boolean announce) {
+        if (alOn) {
+            Calendar c = Calendar.getInstance();
+            c.set(Calendar.HOUR_OF_DAY, alH);
+            c.set(Calendar.MINUTE, alM);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+            long tm = c.getTime().getTime();
+            if (tm <= System.currentTimeMillis()) tm += 86400000L;
+            alTime = tm;
+            try { PushRegistry.registerAlarm("ModernNotes", tm); }
+            catch (Throwable e) { toast("Keep app open for alarm"); announce = false; }
+            if (announce) toast("Alarm set " + two(alH) + ":" + two(alM));
+        } else {
+            alTime = 0;
+            try { PushRegistry.registerAlarm("ModernNotes", 0L); } catch (Throwable e) {}
+            if (announce) toast("Alarm off");
+        }
+        saveAlarm();
+    }
+
+    void ring() {
+        ringing = true;
+        ringStart = System.currentTimeMillis();
+        ringLast = 0;
+        trans = false;
+        try { disp.setCurrent(this); } catch (Throwable e) {}
+        repaint();
+    }
+
+    void dismiss(boolean snooze) {
+        ringing = false;
+        long now = System.currentTimeMillis();
+        if (snooze) {
+            alTime = now + 300000L;
+            try { PushRegistry.registerAlarm("ModernNotes", alTime); } catch (Throwable e) {}
+            saveAlarm();
+        } else if (alDaily) {
+            armAlarm(false);
+        } else {
+            alOn = false;
+            armAlarm(false);
+        }
+        repaint();
+    }
+
+    void drawRing(Graphics g) {
+        boolean on = ((System.currentTimeMillis() / 500L) & 1L) == 0L;
+        g.setColor(on ? 0xD32F2F : 0x7F1D1D);
+        g.fillRect(0, 0, w, h);
+        g.setColor(0xFFFFFF);
+        g.setFont(fbig);
+        g.drawString("ALARM!", w / 2, h / 3, TC);
+        g.drawString(two(alH) + ":" + two(alM), w / 2, h / 3 + fbig.getHeight() + 8, TC);
+        drawBar(g, "Snooze 5m", "Any key: stop", "Stop");
+    }
+}
              
