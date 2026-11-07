@@ -13,6 +13,7 @@ final class HomeApp extends App {
 
     boolean repeat() { return true; }
     int tickMs() { return 1000; }
+    void enter(Hub h) { Snd.start(h); }
     boolean tick(Hub h, long now) {
         int m = Calendar.getInstance().get(Calendar.MINUTE);
         if (m != lastMin) { lastMin = m; return true; }
@@ -62,12 +63,13 @@ final class HomeApp extends App {
 
     void key(int k, Hub h) {
         if (k == Canvas.KEY_POUND || h.isRight(k)) { h.midlet.exit(); return; }
-        int a = h.act(k), cs = cols();
-        if (h.isLeft(k) || a == Canvas.FIRE) { h.open(h.make(sel)); return; }
+        int a = h.act(k), cs = cols(), old = sel;
+        if (h.isLeft(k) || a == Canvas.FIRE) { h.open(SfxApp.wrap(h.make(sel))); return; }
         if (a == Canvas.LEFT && sel > 0) sel--;
         else if (a == Canvas.RIGHT && sel < Hub.NAPPS - 1) sel++;
         else if (a == Canvas.UP && sel - cs >= 0) sel -= cs;
         else if (a == Canvas.DOWN && sel < Hub.NAPPS - 1) sel = Math.min(sel + cs, Hub.NAPPS - 1);
+        if (sel != old) Snd.sfx(Snd.TICK);
         ensure(h);
     }
 }
