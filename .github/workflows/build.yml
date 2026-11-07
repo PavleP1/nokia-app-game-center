@@ -56,14 +56,18 @@ jobs:
               void start() throws MediaException;
               void stop() throws MediaException;
               void close();
+              void setLoopCount(int count);
               Control getControl(String type);
           }
           EOF
           cat > stubs/javax/microedition/media/Manager.java <<'EOF'
           package javax.microedition.media;
           import java.io.IOException;
+          import java.io.InputStream;
           public class Manager {
               public static Player createPlayer(String locator) throws IOException, MediaException { return null; }
+              public static Player createPlayer(InputStream stream, String type) throws IOException, MediaException { return null; }
+              public static void playTone(int note, int duration, int volume) throws MediaException {}
           }
           EOF
           cat > stubs/javax/microedition/media/control/VideoControl.java <<'EOF'
@@ -78,6 +82,14 @@ jobs:
               void setDisplaySize(int w, int h) throws MediaException;
               void setVisible(boolean visible);
               byte[] getSnapshot(String type) throws MediaException;
+          }
+          EOF
+          cat > stubs/javax/microedition/media/control/VolumeControl.java <<'EOF'
+          package javax.microedition.media.control;
+          import javax.microedition.media.Control;
+          public interface VolumeControl extends Control {
+              int setLevel(int level);
+              int getLevel();
           }
           EOF
       - name: Make icon
@@ -138,7 +150,7 @@ jobs:
             -keep "public class ModernNotes"
       - name: Package JAR + JAD
         run: |
-          V="2.0.${GITHUB_RUN_NUMBER}"
+          V="2.1.${GITHUB_RUN_NUMBER}"
           mkdir pre && cd pre && unzip -q ../build/out.jar && rm -rf META-INF && cd ..
           cp res/icon.png pre/icon.png
           printf 'Manifest-Version: 1.0\nMIDlet-1: Modern Hub, /icon.png, ModernNotes\nMIDlet-Icon: /icon.png\nMIDlet-Name: Modern Notes\nMIDlet-Vendor: Me\nMIDlet-Version: %s\nMicroEdition-Configuration: CLDC-1.0\nMicroEdition-Profile: MIDP-2.0\nMIDlet-Permissions-Opt: javax.microedition.io.PushRegistry, javax.microedition.io.Connector.file.read, javax.microedition.io.Connector.file.write, javax.microedition.media.control.VideoControl.getSnapshot\n' "$V" > manifest.mf
